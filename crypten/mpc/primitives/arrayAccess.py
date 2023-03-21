@@ -2,7 +2,7 @@
 Author: ZJG
 Date: 2022-07-05 16:00:32
 LastEditors: ZJG
-LastEditTime: 2022-09-15 16:01:24
+LastEditTime: 2023-03-07 10:29:18
 '''
 from scipy.fftpack import ss_diff
 import crypten
@@ -22,24 +22,34 @@ def reverse(arr,start,end):
         start += 1
         end -= 1
  
-def rightShift(arr,k):
-    if not isinstance(arr, list):
-        is_list = False
-        arr = arr.detach().numpy().tolist()
-    if arr == None:
-        print("Paramter Invalid!")
-        return
-    lens = len(arr)
-    # print(arr)
-    k %= lens
-    reverse(arr,0,lens-k-1)
-    reverse(arr,lens-k,lens-1)
-    reverse(arr,0,lens-1)
-    # print(arr)
-    if not is_list:
-        return torch.tensor(arr)
-    else:
-        return arr
+def rightShift(A,a):
+    # return A
+    # arr = A.detach().numpy().tolist()
+    arr = [s for s in range(A.shape[0])]
+    for i in range(a):
+        arr.insert(0,arr.pop())
+    # return torch.tensor(arr)
+    return arr
+
+# def rightShift(arr,k):
+#     # return arr
+#     if not isinstance(arr, list):
+#         is_list = False
+#         arr = arr.detach().numpy().tolist()
+#     if arr == None:
+#         print("Paramter Invalid!")
+#         return
+#     lens = len(arr)
+#     # print(arr)
+#     k %= lens
+#     reverse(arr,0,lens-k-1)
+#     reverse(arr,lens-k,lens-1)
+#     reverse(arr,0,lens-1)
+#     # print(arr)
+#     if not is_list:
+#         return torch.tensor(arr)
+#     else:
+#         return arr
 
 def where(condition, input, other):
     """
@@ -85,8 +95,10 @@ def SecureArrayAccess(array, index):
 
     if rank == 0:
         # generate r1 and r3
-        r1 = random.randint(0, 10000)
-        r3 = random.randint(0, 10000)
+        # r1 = random.randint(0, 100)
+        # r3 = random.randint(0, 100)
+        r1 = 33
+        r3 = 66
         r1_tensor = torch.tensor([r1])
         r3_tensor = torch.tensor([r3])
         ##################### Debug #########################
@@ -94,7 +106,8 @@ def SecureArrayAccess(array, index):
         # print(array)
         #####################################################
         #* calculate <a'>_1
-        array = rightShift(array, r1%m)
+        iii = rightShift(array, r1%m)
+        array = array[iii]
         ##################### Debug #########################
         # print('array shifted r1 result:')
         # print(array)
@@ -111,7 +124,8 @@ def SecureArrayAccess(array, index):
         # print(r3%m)
         #####################################################
         #* calculate <a''>_1
-        array = rightShift(array, r3%m)
+        iii = rightShift(array, r3%m)
+        array = array[iii]
         ##################### Debug #########################
         # print('array shifted r3 result:')
         # print(array)
@@ -125,11 +139,15 @@ def SecureArrayAccess(array, index):
         #####################################################
 
         #* send data
-        comm.get().send(r1_tensor, 1, 0)
-        comm.get().send(r3_tensor, 2, 1)
+        # comm.get().send(r1_tensor, 1, 0)
+        # comm.get().send(r3_tensor, 2, 1)
         a = array.clone()
-        comm.get().send(a, 1, 2)
-        comm.get().send(index_tensor, 1, 3)
+        
+        
+        a_index_tensor = torch.cat((a.reshape(-1),index_tensor), 0)
+        comm.get().send(a_index_tensor, 1, 2)
+        # comm.get().send(a, 1, 2)
+        # comm.get().send(index_tensor, 1, 3)
         
         # return result's share
         return torch.zeros(n).long()
@@ -141,43 +159,53 @@ def SecureArrayAccess(array, index):
         #####################################################
         #* recv <a>_2
         array_2 = torch.zeros(array_size).long()
-        array_2 = comm.get().recv(array_2, 2, 6)
+        index_2 = torch.zeros(1).long()
+        array_2_index_2 = torch.cat((array_2.reshape(-1),index_2), 0)
+        array_2_index_2 = comm.get().recv(array_2_index_2, 2, 6)
+        array_2 = array_2_index_2[0:-1].reshape(array_size)
+        index_2 = array_2_index_2[-1]
+        # array_2 = comm.get().recv(array_2, 2, 6)
         ##################### Debug #########################
         # print('array_2 from P3:')
         # print(array_2)
         #####################################################
         #* recv I_2
-        index_2 = torch.zeros(1).long()
-        index_2 = comm.get().recv(index_2, 2, 7)
+        # index_2 = torch.zeros(1).long()
+        # index_2 = comm.get().recv(index_2, 2, 7)
         ##################### Debug #########################
         # print('I_2 from P3:')
         # print(index_2)
         #####################################################
         #* recv r1
-        r1_tensor = torch.zeros(1).long()
-        r1_tensor = comm.get().recv(r1_tensor, 0, 0)
+        # r1_tensor = torch.zeros(1).long()
+        # r1_tensor = comm.get().recv(r1_tensor, 0, 0)
+        r1_tensor = torch.tensor([33])
         ##################### Debug #########################
         # print('r1 from P1:')
         # print(r1_tensor)
         #####################################################
         #* recv <a''>_2
-        a = torch.zeros(size=array_size, dtype=torch.int64).long()
-        a = comm.get().recv(a, 0, 2)
+        a = torch.zeros(size=array_size).long()
+        h1_tensor = torch.zeros(1).long()
+        a_h1_tensor = torch.cat((a.reshape(-1),h1_tensor), 0)
+        a_h1_tensor = comm.get().recv(a_h1_tensor, 0, 2)
+        a = a_h1_tensor[0:-1].reshape(array_size)
+        h1_tensor = a_h1_tensor[-1]
         ##################### Debug #########################
         # print('<a..>_2 from P1:')
         # print(a)
         #####################################################
         #* recv <h>_1
-        index_tensor = torch.zeros(1).long()
-        h1_tensor = comm.get().recv(index_tensor, 0, 3)
+        # index_tensor = torch.zeros(1).long()
+        # h1_tensor = comm.get().recv(index_tensor, 0, 3)
         ##################### Debug #########################
         # print('<h>_1 from P1:')
         # print(h1_tensor)
         #####################################################
 
         r1 = r1_tensor[0].data
-        h1 = h1_tensor[0].data
-        index_2 = index_2[0].data
+        h1 = h1_tensor.data
+        index_2 = index_2.data
         #* calculate <h>_1 + I_2
         h = (index +index_2 + h1)%m
         ##################### Debug #########################
@@ -190,7 +218,8 @@ def SecureArrayAccess(array, index):
         # print('array1 + array2:')
         # print(array_1)
         #####################################################
-        array_1 = rightShift(array_1, r1%m)
+        iii = rightShift(array_1, r1%m)
+        array_1 = array_1[iii]
         array_1 = array_1.long() + c.share.long()
         ##################### Debug #########################
         # print('<a.>_2:')
@@ -198,8 +227,11 @@ def SecureArrayAccess(array, index):
         #####################################################
         #* send data
         h_tensor = torch.tensor([h]).long()
-        comm.get().send(array_1, 2, 4)
-        comm.get().send(h_tensor, 2, 5)
+        array_1_temp = array_1.reshape(-1)
+        dd = torch.cat((array_1_temp,h_tensor),0)
+        comm.get().send(dd, 2, 4)
+        # comm.get().send(array_1, 2, 4)
+        # comm.get().send(h_tensor, 2, 5)
         return a[h]
 
     elif rank == 2:
@@ -209,37 +241,46 @@ def SecureArrayAccess(array, index):
         #####################################################
         #* send <a>_3
         array_2 = array.clone()
-        comm.get().send(array_2, 1, 6)
+        # comm.get().send(array_2, 1, 6)
         #* send I_3
         index_2 = torch.tensor([index]).long()
-        comm.get().send(index_2, 1, 7)
+        array_2_temp = array_2.reshape(-1)
+        array_2_index_2 = torch.cat((array_2_temp, index_2), 0)
+        comm.get().send(array_2_index_2, 1, 6)
+        # comm.get().send(index_2, 1, 7)
         #* recv r3
-        r3_tensor = torch.zeros(1).long()
-        r3_tensor = comm.get().recv(r3_tensor, 0, 1)
+        # r3_tensor = torch.zeros(1).long()
+        # r3_tensor = comm.get().recv(r3_tensor, 0, 1)
+        r3_tensor = torch.tensor([66])
         ##################### Debug #########################
         # print('r3 from P1')
         # print(r3_tensor)
         #####################################################
         #* recv <a'>_2
         array_1 = torch.zeros(array_size).long()
-        array_1 = comm.get().recv(array_1, 1, 4)
+        h_tensor = torch.zeros(1).long()
+        dd = torch.cat((array_1.reshape(-1), h_tensor), 0)
+        dd = comm.get().recv(dd, 1, 4)
+        array_1 = dd[0:-1].reshape(array_size)
+        h_tensor = dd[-1]
         ##################### Debug #########################
         # print('<a.>_2 from P2')
         # print(array_1)
         #####################################################
         #* recv h
-        h_tensor = torch.zeros(1).long()
-        h_tensor = comm.get().recv(h_tensor, 1, 5)
+        
+        # h_tensor = comm.get().recv(h_tensor, 1, 5)
         ##################### Debug #########################
         # print('h from P2')
         # print(h_tensor)
         #####################################################
 
-        h = h_tensor[0].data
+        h = h_tensor.data
         r3 = r3_tensor[0].data
 
         a = array_1.long() + c.share.long()
-        a = rightShift(a, r3%m)
+        iii = rightShift(a, r3%m)
+        a = a[iii]
         ##################### Debug #########################
         # print('<a..>_3')
         # print(a)

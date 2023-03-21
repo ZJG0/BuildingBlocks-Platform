@@ -48,6 +48,8 @@ def __beaver_protocol(op, x, y, *args, **kwargs):
         raise ValueError(f"x lives on device {x.device} but y on device {y.device}")
 
     provider = crypten.mpc.get_default_provider()
+    # provider = crypten.mpc.get_ttp()
+    # print(crypten.mpc.ttp_required())
     a, b, c = provider.generate_additive_triple(
         x.size(), y.size(), op, device=x.device, *args, **kwargs
     )

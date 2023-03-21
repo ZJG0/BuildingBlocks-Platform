@@ -1,3 +1,9 @@
+'''
+Author: ZJG
+Date: 2022-11-08 10:27:01
+LastEditors: ZJG
+LastEditTime: 2023-02-09 16:21:29
+'''
 #!/usr/bin/env python3
 
 # Copyright (c) Facebook, Inc. and its affiliates.
@@ -32,6 +38,8 @@ __SUPPORTED_PROVIDERS = {
     "HE": provider.HomomorphicProvider(),
 }
 
+def get_ttp():
+    return __SUPPORTED_PROVIDERS["TTP"]
 
 def get_default_provider():
     return __SUPPORTED_PROVIDERS[cfg.mpc.provider]

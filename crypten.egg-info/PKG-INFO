@@ -5,8 +5,11 @@ Summary: CrypTen: secure machine learning in PyTorch.
 Home-page: https://github.com/facebookresearch/CrypTen
 Author: ZJG
 License: MIT licensed, as found in the LICENSE file
+Platform: UNKNOWN
 Description-Content-Type: text/markdown
 License-File: LICENSE
 
 # BuildingBlocks-Platform
 This is a framework for  evaluating building blocks in SMPC.
+
+

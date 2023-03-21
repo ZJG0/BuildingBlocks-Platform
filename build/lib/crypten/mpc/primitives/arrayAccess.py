@@ -2,7 +2,7 @@
 Author: ZJG
 Date: 2022-07-05 16:00:32
 LastEditors: ZJG
-LastEditTime: 2022-09-15 16:01:24
+LastEditTime: 2023-02-09 14:44:34
 '''
 from scipy.fftpack import ss_diff
 import crypten
@@ -85,8 +85,8 @@ def SecureArrayAccess(array, index):
 
     if rank == 0:
         # generate r1 and r3
-        r1 = random.randint(0, 10000)
-        r3 = random.randint(0, 10000)
+        r1 = random.randint(0, 100)
+        r3 = random.randint(0, 100)
         r1_tensor = torch.tensor([r1])
         r3_tensor = torch.tensor([r3])
         ##################### Debug #########################
